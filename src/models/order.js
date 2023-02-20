@@ -1,0 +1,97 @@
+import db from '../database';
+export default class OrderStore {
+    async index() {
+        try {
+            const sql = 'SELECT * FROM orders';
+            const conn = await db.connect();
+            const result = await conn.query(sql);
+            conn.release();
+            const users = result.rows;
+            return users;
+        }
+        catch (err) {
+            throw new Error(`Unable to show all orders. Error ${err}`);
+        }
+    }
+    async create(u) {
+        try {
+            const sql = 'INSERT INTO orders (status, product_quantity, product_id, user_id) VALUES ($1, $2, $3, $4) RETURNING *';
+            const conn = await db.connect();
+            const result = await conn.query(sql, [
+                u.status,
+                u.product_quantity,
+                u.product_id,
+                u.user_id,
+            ]);
+            conn.release();
+            const newOrder = result.rows[0];
+            return newOrder;
+        }
+        catch (err) {
+            throw new Error(`Unable to add order. Error ${err}`);
+        }
+    }
+    async show(id) {
+        try {
+            const sql = 'SELECT * FROM orders WHERE id = $1';
+            const conn = await db.connect();
+            const result = await conn.query(sql, [id]);
+            conn.release();
+            const order = result.rows[0];
+            return order;
+        }
+        catch (err) {
+            throw new Error(`Unable to show order. Error ${err}`);
+        }
+    }
+    async delete(id) {
+        try {
+            const sql = 'DELETE FROM orders WHERE id = $1';
+            const conn = await db.connect();
+            const result = await conn.query(sql, [id]);
+            conn.release();
+            const order = result.rows[0];
+            return order;
+        }
+        catch (err) {
+            throw new Error(`Unable to delete order. Error ${err}`);
+        }
+    }
+    async addProduct(quantity, orderId, productId) {
+        try {
+            const conn = await db.connect();
+            const getOrderStatusSql = 'SELECT status FROM orders WHERE id = $1';
+            const checkOrderStatusResult = await conn.query(getOrderStatusSql, [
+                orderId,
+            ]);
+            const orderStatus = checkOrderStatusResult.rows[0].status;
+            if (orderStatus === 'active') {
+                const sql = 'INSERT INTO order_products (quantity, order_id, product_id) VALUES ($1, $2, $3) RETURNING *';
+                const result = await conn.query(sql, [
+                    quantity,
+                    orderId,
+                    productId,
+                ]);
+                conn.release();
+                const addedProduct = result.rows[0];
+                return addedProduct;
+            }
+            return null;
+        }
+        catch (err) {
+            throw new Error(`Unable to add new Order. Error${err}`);
+        }
+    }
+    async deleteProduct(productId) {
+        try {
+            const sql = 'DELETE FROM order_products WHERE product_id = $1';
+            const conn = await db.connect();
+            await conn.query(sql, [productId]);
+            conn.release();
+            return 'Deleted';
+        }
+        catch (err) {
+            throw new Error('Unable to delete product in orders');
+        }
+    }
+}
